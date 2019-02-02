@@ -20,7 +20,7 @@ public class TCSS458Paint extends JPanel implements KeyListener {
     private int imageSize;
     private int[] pixels;
     private Vector4[][] scan;
-    private double[][] zbuffer;
+    private DepthBuffer depthBuffer;
     private Color.RGB color;
     private Matrix4 ctm;
     private int xRotate = 0;
@@ -30,12 +30,11 @@ public class TCSS458Paint extends JPanel implements KeyListener {
         if (x >= width || y >= height || x < 0 || y < 0)
             return;
 
-        int ri = (height - y - 1) * width * 3 + x * 3;
-        int gi = ri + 1;
-        int bi = ri + 2;
+        if (depthBuffer.set(x, y, z) || force) {
+            int ri = (height - y - 1) * width * 3 + x * 3;
+            int gi = ri + 1;
+            int bi = ri + 2;
 
-        if (z >= zbuffer[x][y] || force) {
-            zbuffer[x][y] = z;
             pixels[ri] = r;
             pixels[gi] = g;
             pixels[bi] = b;
@@ -207,7 +206,12 @@ public class TCSS458Paint extends JPanel implements KeyListener {
                 height = input.nextInt();
                 imageSize = width * height;
                 pixels = new int[imageSize * 3];
-                zbuffer = new double[width][height];
+
+                if (depthBuffer == null || depthBuffer.width() != width || depthBuffer.height() != height) {
+                    depthBuffer = new DepthBuffer(width, height);
+                } else {
+                    depthBuffer.clear();
+                }
 
                 for (int x = 0; x < width; x++) {
                     for (int y = 0; y < height; y++) {
