@@ -21,7 +21,7 @@ public class TCSS458Paint extends JPanel implements KeyListener {
     private int[] pixels;
     private Vector4[][] scan;
     private Double[][] zbuffer;
-    private RGB color;
+    private Color.RGB color;
     private Matrix4 ctm;
     private int xRotate = 0;
     private int yRotate = 0;
@@ -214,7 +214,7 @@ public class TCSS458Paint extends JPanel implements KeyListener {
                 Vector4 p2 = ctm.mult(new Vector4(input.nextDouble(), input.nextDouble(), input.nextDouble()));
                 drawLine(p1, p2);
             } else if (command.equals("RGB")) {
-                color = RGB.of(input.nextDouble(), input.nextDouble(), input.nextDouble());
+                color = Color.rgb(input.nextDouble(), input.nextDouble(), input.nextDouble());
             } else if (command.equals("TRI")) {
                 initCurrentTransformationMatrix();
                 scan = new Vector4[height][2];
