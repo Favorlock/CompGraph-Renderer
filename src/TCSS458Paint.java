@@ -30,39 +30,43 @@ public class TCSS458Paint extends JPanel implements KeyListener {
         if (x >= width || y >= height || x < 0 || y < 0)
             return;
 
-        if (zbuffer[x][y] == null || z > zbuffer[x][y]) {
+        int ri = (height - y - 1) * width * 3 + x * 3;
+        int gi = ri + 1;
+        int bi = ri + 2;
+
+        if (zbuffer[x][y] == null || z >= zbuffer[x][y]) {
             zbuffer[x][y] = z;
-            pixels[(height - y - 1) * width * 3 + x * 3] = r;
-            pixels[(height - y - 1) * width * 3 + x * 3 + 1] = g;
-            pixels[(height - y - 1) * width * 3 + x * 3 + 2] = b;
+            pixels[ri] = r;
+            pixels[gi] = g;
+            pixels[bi] = b;
         }
     }
 
-    void drawLine(Vector4 p1, Vector4 p2) {
-        if (Math.abs(p2.getY() - p1.getY()) < Math.abs(p2.getX() - p1.getX())) {
-            if (p1.getX() > p2.getX()) {
-                drawLineLow(p2, p1);
+    void drawLine(Vector4 v1, Vector4 v2) {
+        if (Math.abs(v2.getY() - v1.getY()) < Math.abs(v2.getX() - v1.getX())) {
+            if (v1.getX() > v2.getX()) {
+                drawLineLow(v2, v1);
             } else {
-                drawLineLow(p1, p2);
+                drawLineLow(v1, v2);
             }
         } else {
-            if (p1.getY() > p2.getY()) {
-                drawLineHigh(p2, p1);
+            if (v1.getY() > v2.getY()) {
+                drawLineHigh(v2, v1);
             } else {
-                drawLineHigh(p1, p2);
+                drawLineHigh(v1, v2);
             }
         }
     }
 
-    void drawLineLow(Vector4 p1, Vector4 p2) {
-        int x1 = worldToScreen(p1.getX(), width);
-        int y1 = worldToScreen(p1.getY(), height);
-        int x2 = worldToScreen(p2.getX(), width);
-        int y2 = worldToScreen(p2.getY(), height);
+    void drawLineLow(Vector4 v1, Vector4 v2) {
+        int x1 = worldToScreen(v1.getX(), width);
+        int y1 = worldToScreen(v1.getY(), height);
+        int x2 = worldToScreen(v2.getX(), width);
+        int y2 = worldToScreen(v2.getY(), height);
 
         int deltaX = x2 - x1;
         int deltaY = y2 - y1;
-        double deltaZ = (p2.getZ() - p1.getZ()) / deltaX;
+        double deltaZ = (v2.getZ() - v1.getZ()) / deltaX;
         int multY = 1;
 
         if (deltaY < 0) {
@@ -73,7 +77,7 @@ public class TCSS458Paint extends JPanel implements KeyListener {
         int weight = 2 * deltaY - deltaX;
         int y = y1;
 
-        double curZ = p1.getZ();
+        double curZ = v1.getZ();
         for (int x = x1; x <= x2; x++) {
             if (!(x < 0 || x >= width || y < 0 || y >= height)) {
                 if (scan != null) {
@@ -161,8 +165,8 @@ public class TCSS458Paint extends JPanel implements KeyListener {
         int y2 = worldToScreen(v2.getY(), height);
         int y3 = worldToScreen(v3.getY(), height);
 
-        int yMin = (y1 < y2 && y1 < y3) ? y1 : (y2 < y3) ? y2 : y3;
-        int yMax = (y1 > y2 && y1 > y3) ? y1 : (y2 > y3) ? y2 : y3;
+        int yMin = Math.max(0, Math.min(y1, Math.min(y2, y3)));
+        int yMax = Math.min(height - 1, Math.max(y1, Math.max(y2, y3)));
 
         for (int y = yMin; y <= yMax; y++) {
             if (y < 0 || y >= height)
@@ -173,9 +177,12 @@ public class TCSS458Paint extends JPanel implements KeyListener {
             if (row[0] == null || row[1] == null)
                 continue;
 
-            double deltaZ = (row[1].getZ() - row[0].getZ()) / (row[1].getX() - row[0].getX());
-            double curZ = row[0].getZ();
-            for (int x = row[0].getX().intValue(); x <= row[1].getX().intValue(); x++) {
+            Vector4 vL = row[0];
+            Vector4 vR = row[1];
+
+            double deltaZ = (vR.z - vL.z) / (vR.x - vL.x);
+            double curZ = vL.z;
+            for (int x = vL.x.intValue(); x <= vR.x.intValue(); x++) {
                 drawPixel(x, y, curZ, color.getRed(), color.getGreen(), color.getBlue());
                 curZ += deltaZ;
             }
@@ -264,49 +271,49 @@ public class TCSS458Paint extends JPanel implements KeyListener {
                 initCurrentTransformationMatrix();
                 Matrix4 ctm = applySceneRotations();
 
-                Vector4 blf = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_NEG, UNICUBE_POS));
-                Vector4 blr = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_NEG, UNICUBE_NEG));
-                Vector4 brr = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_NEG, UNICUBE_NEG));
-                Vector4 brf = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_NEG, UNICUBE_POS));
-                Vector4 tlf = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_POS, UNICUBE_POS));
-                Vector4 tlr = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_POS, UNICUBE_NEG));
-                Vector4 trr = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_POS, UNICUBE_NEG));
-                Vector4 trf = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_POS, UNICUBE_POS));
+                Vector4 lbf = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_NEG, UNICUBE_POS));
+                Vector4 lbr = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_NEG, UNICUBE_NEG));
+                Vector4 rbr = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_NEG, UNICUBE_NEG));
+                Vector4 rbf = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_NEG, UNICUBE_POS));
+                Vector4 ltf = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_POS, UNICUBE_POS));
+                Vector4 ltr = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_POS, UNICUBE_NEG));
+                Vector4 rtr = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_POS, UNICUBE_NEG));
+                Vector4 rtf = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_POS, UNICUBE_POS));
 
-                drawLine(blf, blr);
-                drawLine(blr, brr);
-                drawLine(brr, brf);
-                drawLine(brf, blf);
+                drawLine(lbf, lbr);
+                drawLine(lbr, rbr);
+                drawLine(rbr, rbf);
+                drawLine(rbf, lbf);
 
-                drawLine(blf, tlf);
-                drawLine(blr, tlr);
-                drawLine(brr, trr);
-                drawLine(brf, trf);
+                drawLine(lbf, ltf);
+                drawLine(lbr, ltr);
+                drawLine(rbr, rtr);
+                drawLine(rbf, rtf);
 
-                drawLine(tlf, tlr);
-                drawLine(tlr, trr);
-                drawLine(trr, trf);
-                drawLine(trf, tlf);
+                drawLine(ltf, ltr);
+                drawLine(ltr, rtr);
+                drawLine(rtr, rtf);
+                drawLine(rtf, ltf);
             } else if (command.equals("SOLID_CUBE")) {
                 initCurrentTransformationMatrix();
                 Matrix4 ctm = applySceneRotations();
 
-                Vector4 blf = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_NEG, UNICUBE_POS));
-                Vector4 blr = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_NEG, UNICUBE_NEG));
-                Vector4 brr = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_NEG, UNICUBE_NEG));
-                Vector4 brf = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_NEG, UNICUBE_POS));
-                Vector4 tlf = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_POS, UNICUBE_POS));
-                Vector4 tlr = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_POS, UNICUBE_NEG));
-                Vector4 trr = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_POS, UNICUBE_NEG));
-                Vector4 trf = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_POS, UNICUBE_POS));
+                Vector4 lbf = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_NEG, UNICUBE_POS));
+                Vector4 lbr = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_NEG, UNICUBE_NEG));
+                Vector4 rbr = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_NEG, UNICUBE_NEG));
+                Vector4 rbf = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_NEG, UNICUBE_POS));
+                Vector4 ltf = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_POS, UNICUBE_POS));
+                Vector4 ltr = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_POS, UNICUBE_NEG));
+                Vector4 rtr = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_POS, UNICUBE_NEG));
+                Vector4 rtf = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_POS, UNICUBE_POS));
 
                 Mesh mesh = new Mesh(
-                        new Surface(new Triangle(blf, blr, brr), new Triangle(brr, brf, blr)),
-                        new Surface(new Triangle(blr, brr, trr), new Triangle(trr, tlr, blr)),
-                        new Surface(new Triangle(blr, blf, tlf), new Triangle(tlf, tlr, blr)),
-                        new Surface(new Triangle(brr, brf, trf), new Triangle(trf, trr, brr)),
-                        new Surface(new Triangle(brf, blf, tlf), new Triangle(tlf, trf, brf)),
-                        new Surface(new Triangle(trr, trf, tlf), new Triangle(tlf, tlr, trr))
+                        new Surface(new Triangle(lbf, lbr, ltr), new Triangle(lbf, ltf, ltr)), // left
+                        new Surface(new Triangle(rbf, rbr, rtr), new Triangle(rbf, rtf, rtr)), // right
+                        new Surface(new Triangle(lbr, rbr, rtr), new Triangle(lbr, ltr, rtr)), // rear
+                        new Surface(new Triangle(lbf, rbf, rtf), new Triangle(lbf, ltf, rtf)), // front
+                        new Surface(new Triangle(lbf, lbr, rbr), new Triangle(lbf, rbf, rbr)), // bottom
+                        new Surface(new Triangle(ltf, ltr, rtr), new Triangle(ltf, rtf, rtr))  // top
                 );
 
                 scan = new Vector4[height][2];

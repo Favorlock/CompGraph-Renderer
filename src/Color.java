@@ -1,3 +1,5 @@
+import java.util.Arrays;
+
 public class Color {
 
     private static final int RGB_MAX = 255;
@@ -39,6 +41,13 @@ public class Color {
 
         public int getBlue() {
             return values[2];
+        }
+
+        @Override
+        public String toString() {
+            return "RGB{" +
+                    "values=" + Arrays.toString(values) +
+                    '}';
         }
     }
 }
