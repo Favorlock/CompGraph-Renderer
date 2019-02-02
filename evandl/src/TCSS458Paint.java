@@ -20,13 +20,13 @@ public class TCSS458Paint extends JPanel implements KeyListener {
     private int imageSize;
     private int[] pixels;
     private Vector4[][] scan;
-    private double[][] zbuffer;
+    private Double[][] zbuffer;
     private Color.RGB color;
     private Matrix4 ctm;
     private int xRotate = 0;
     private int yRotate = 0;
 
-    void drawPixel(int x, int y, double z, int r, int g, int b, boolean force) {
+    void drawPixel(int x, int y, double z, int r, int g, int b) {
         if (x >= width || y >= height || x < 0 || y < 0)
             return;
 
@@ -34,7 +34,7 @@ public class TCSS458Paint extends JPanel implements KeyListener {
         int gi = ri + 1;
         int bi = ri + 2;
 
-        if (z >= zbuffer[x][y] || force) {
+        if (zbuffer[x][y] == null || z >= zbuffer[x][y]) {
             zbuffer[x][y] = z;
             pixels[ri] = r;
             pixels[gi] = g;
@@ -92,7 +92,7 @@ public class TCSS458Paint extends JPanel implements KeyListener {
                             row[1] = new Vector4(x, y, curZ);
                     }
                 } else {
-                    drawPixel(x, y, curZ, color.getRed(), color.getGreen(), color.getBlue(), false);
+                    drawPixel(x, y, curZ, color.getRed(), color.getGreen(), color.getBlue());
                 }
             }
 
@@ -105,15 +105,15 @@ public class TCSS458Paint extends JPanel implements KeyListener {
         }
     }
 
-    void drawLineHigh(Vector4 v1, Vector4 v2) {
-        int x1 = worldToScreen(v1.getX(), width);
-        int y1 = worldToScreen(v1.getY(), height);
-        int x2 = worldToScreen(v2.getX(), width);
-        int y2 = worldToScreen(v2.getY(), height);
+    void drawLineHigh(Vector4 p1, Vector4 p2) {
+        int x1 = worldToScreen(p1.getX(), width);
+        int y1 = worldToScreen(p1.getY(), height);
+        int x2 = worldToScreen(p2.getX(), width);
+        int y2 = worldToScreen(p2.getY(), height);
 
         int deltaX = x2 - x1;
         int deltaY = y2 - y1;
-        double deltaZ = (v2.getZ() - v1.getZ()) / deltaY;
+        double deltaZ = (p2.getZ() - p1.getZ()) / deltaY;
         int multX = 1;
 
         if (deltaX < 0) {
@@ -124,7 +124,7 @@ public class TCSS458Paint extends JPanel implements KeyListener {
         int weight = 2 * deltaX - deltaY;
         int x = x1;
 
-        double curZ = v1.getZ();
+        double curZ = p1.getZ();
         for (int y = y1; y <= y2; y++) {
             if (!(x < 0 || x >= width || y < 0 || y >= height)) {
                 if (scan != null) {
@@ -139,7 +139,7 @@ public class TCSS458Paint extends JPanel implements KeyListener {
                             row[1] = new Vector4(x, y, curZ);
                     }
                 } else {
-                    drawPixel(x, y, curZ, color.getRed(), color.getGreen(), color.getBlue(), false);
+                    drawPixel(x, y, curZ, color.getRed(), color.getGreen(), color.getBlue());
                 }
             }
 
@@ -183,7 +183,7 @@ public class TCSS458Paint extends JPanel implements KeyListener {
             double deltaZ = (vR.z - vL.z) / (vR.x - vL.x);
             double curZ = vL.z;
             for (int x = vL.x.intValue(); x <= vR.x.intValue(); x++) {
-                drawPixel(x, y, curZ, color.getRed(), color.getGreen(), color.getBlue(), false);
+                drawPixel(x, y, curZ, color.getRed(), color.getGreen(), color.getBlue());
                 curZ += deltaZ;
             }
         }
@@ -207,11 +207,11 @@ public class TCSS458Paint extends JPanel implements KeyListener {
                 height = input.nextInt();
                 imageSize = width * height;
                 pixels = new int[imageSize * 3];
-                zbuffer = new double[width][height];
+                zbuffer = new Double[width][height];
 
                 for (int x = 0; x < width; x++) {
                     for (int y = 0; y < height; y++) {
-                        drawPixel(x, y, Double.NEGATIVE_INFINITY, 255, 255, 255, true);
+                        drawPixel(x, y, Double.NEGATIVE_INFINITY, 255, 255, 255);
                     }
                 }
             } else if (command.equals("LINE")) {
