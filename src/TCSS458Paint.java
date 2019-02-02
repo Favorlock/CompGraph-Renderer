@@ -10,21 +10,21 @@ import java.util.*;
 
 public class TCSS458Paint extends JPanel implements KeyListener {
 
-    static final double UNICUBE_POS = .5;
-    static final double UNICUBE_NEG = -.5;
-    static final int DEGREES_TO_ROTATE = 3;
+    public static final double UNICUBE_POS = .5;
+    public static final double UNICUBE_NEG = -.5;
+    public static final int DEGREES_TO_ROTATE = 3;
 
-    static int width;
-    static int height;
+    public static int width;
+    public static int height;
 
-    int imageSize;
-    int[] pixels;
-    Vector4[][] scan;
-    Double[][] zbuffer;
-    RGB color;
-    Matrix4 ctm;
-    int xRotate = 0;
-    int yRotate = 0;
+    private int imageSize;
+    private int[] pixels;
+    private Vector4[][] scan;
+    private Double[][] zbuffer;
+    private RGB color;
+    private Matrix4 ctm;
+    private int xRotate = 0;
+    private int yRotate = 0;
 
     void drawPixel(int x, int y, double z, int r, int g, int b) {
         if (x >= width || y >= height || x < 0 || y < 0)
@@ -148,17 +148,21 @@ public class TCSS458Paint extends JPanel implements KeyListener {
         }
     }
 
-    void drawTriangle(Vector4 p1, Vector4 p2, Vector4 p3) {
-        drawLine(p1, p2);
-        drawLine(p2, p3);
-        drawLine(p3, p1);
+    void drawTriangle(Triangle tri) {
+        Vector4 v1 = tri.getV1();
+        Vector4 v2 = tri.getV2();
+        Vector4 v3 = tri.getV3();
 
-        int y0 = worldToScreen(p1.getY(), height);
-        int y1 = worldToScreen(p2.getY(), height);
-        int y2 = worldToScreen(p3.getY(), height);
+        drawLine(v1, v2);
+        drawLine(v2, v3);
+        drawLine(v3, v1);
 
-        int yMin = (y0 < y1 && y0 < y2) ? y0 : (y1 < y2) ? y1 : y2;
-        int yMax = (y0 > y1 && y0 > y2) ? y0 : (y1 > y2) ? y1 : y2;
+        int y1 = worldToScreen(v1.getY(), height);
+        int y2 = worldToScreen(v2.getY(), height);
+        int y3 = worldToScreen(v3.getY(), height);
+
+        int yMin = (y1 < y2 && y1 < y3) ? y1 : (y2 < y3) ? y2 : y3;
+        int yMax = (y1 > y2 && y1 > y3) ? y1 : (y2 > y3) ? y2 : y3;
 
         for (int y = yMin; y <= yMax; y++) {
             if (y < 0 || y >= height)
@@ -176,6 +180,14 @@ public class TCSS458Paint extends JPanel implements KeyListener {
                 curZ += deltaZ;
             }
         }
+    }
+
+    void drawSurface(Surface surface) {
+        for (Triangle triangle : surface.getTris()) drawTriangle(triangle);
+    }
+
+    void drawMesh(Mesh mesh) {
+        for (Surface surface : mesh.getSurfaces()) drawSurface(surface);
     }
 
     void createImage() {
@@ -206,11 +218,16 @@ public class TCSS458Paint extends JPanel implements KeyListener {
             } else if (command.equals("TRI")) {
                 initCurrentTransformationMatrix();
                 scan = new Vector4[height][2];
+
+                Triangle tri = new Triangle(
+                        new Vector4(input.nextDouble(), input.nextDouble(), input.nextDouble()),
+                        new Vector4(input.nextDouble(), input.nextDouble(), input.nextDouble()),
+                        new Vector4(input.nextDouble(), input.nextDouble(), input.nextDouble())
+                );
+
                 Matrix4 ctm = applySceneRotations();
-                Vector4 p1 = ctm.mult(new Vector4(input.nextDouble(), input.nextDouble(), input.nextDouble()));
-                Vector4 p2 = ctm.mult(new Vector4(input.nextDouble(), input.nextDouble(), input.nextDouble()));
-                Vector4 p3 = ctm.mult(new Vector4(input.nextDouble(), input.nextDouble(), input.nextDouble()));
-                drawTriangle(p1, p2, p3);
+                tri.transform(ctm);
+                drawTriangle(tri);
                 scan = null;
             } else if (command.equals("LOAD_IDENTITY_MATRIX")) {
                 ctm = Matrix4.createIdentityMatrix();
@@ -283,30 +300,17 @@ public class TCSS458Paint extends JPanel implements KeyListener {
                 Vector4 trr = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_POS, UNICUBE_NEG));
                 Vector4 trf = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_POS, UNICUBE_POS));
 
+                Mesh mesh = new Mesh(
+                        new Surface(new Triangle(blf, blr, brr), new Triangle(brr, brf, blr)),
+                        new Surface(new Triangle(blr, brr, trr), new Triangle(trr, tlr, blr)),
+                        new Surface(new Triangle(blr, blf, tlf), new Triangle(tlf, tlr, blr)),
+                        new Surface(new Triangle(brr, brf, trf), new Triangle(trf, trr, brr)),
+                        new Surface(new Triangle(brf, blf, tlf), new Triangle(tlf, trf, brf)),
+                        new Surface(new Triangle(trr, trf, tlf), new Triangle(tlf, tlr, trr))
+                );
+
                 scan = new Vector4[height][2];
-                // Bottom
-                drawTriangle(blf, blr, brr);
-                drawTriangle(brr, brf, blr);
-
-                // Rear
-                drawTriangle(blr, brr, trr);
-                drawTriangle(trr, tlr, blr);
-
-                // Left
-                drawTriangle(blr, blf, tlf);
-                drawTriangle(tlf, tlr, blr);
-
-                // Right
-                drawTriangle(brr, brf, trf);
-                drawTriangle(trf, trr, brr);
-
-                // Front
-                drawTriangle(brf, blf, tlf);
-                drawTriangle(tlf, trf, brf);
-
-                // Top
-                drawTriangle(trr, trf, tlf);
-                drawTriangle(tlf, tlr, trr);
+                drawMesh(mesh);
                 scan = null;
             }
         }
