@@ -5,9 +5,7 @@ public class DepthBuffer {
     private double[][] buffer;
 
     public DepthBuffer(int width, int height) {
-        this.width = width;
-        this.height = height;
-        buffer = new double[width][height];
+        resize(width, height);
     }
 
     public int width() {
@@ -37,5 +35,12 @@ public class DepthBuffer {
             return true;
         }
         return false;
+    }
+
+    public void resize(int width, int height) {
+        this.width = width;
+        this.height = height;
+        buffer = new double[width][height];
+        clear();
     }
 }

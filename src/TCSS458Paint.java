@@ -18,26 +18,20 @@ public class TCSS458Paint extends JPanel implements KeyListener {
     public static int height;
 
     private int imageSize;
-    private int[] pixels;
+    private FrameBuffer frameBuffer;
     private Vector4[][] scan;
     private DepthBuffer depthBuffer;
-    private Color.RGB color;
+    private Color color;
     private Matrix4 ctm;
     private int xRotate = 0;
     private int yRotate = 0;
 
-    void drawPixel(int x, int y, double z, int r, int g, int b, boolean force) {
+    void drawPixel(int x, int y, double z, boolean force) {
         if (x >= width || y >= height || x < 0 || y < 0)
             return;
 
         if (depthBuffer.set(x, y, z) || force) {
-            int ri = (height - y - 1) * width * 3 + x * 3;
-            int gi = ri + 1;
-            int bi = ri + 2;
-
-            pixels[ri] = r;
-            pixels[gi] = g;
-            pixels[bi] = b;
+            frameBuffer.set(x, y, color);
         }
     }
 
@@ -91,7 +85,7 @@ public class TCSS458Paint extends JPanel implements KeyListener {
                             row[1] = new Vector4(x, y, curZ);
                     }
                 } else {
-                    drawPixel(x, y, curZ, color.getRed(), color.getGreen(), color.getBlue(), false);
+                    drawPixel(x, y, curZ, false);
                 }
             }
 
@@ -138,7 +132,7 @@ public class TCSS458Paint extends JPanel implements KeyListener {
                             row[1] = new Vector4(x, y, curZ);
                     }
                 } else {
-                    drawPixel(x, y, curZ, color.getRed(), color.getGreen(), color.getBlue(), false);
+                    drawPixel(x, y, curZ, false);
                 }
             }
 
@@ -182,7 +176,7 @@ public class TCSS458Paint extends JPanel implements KeyListener {
             double deltaZ = (vR.z - vL.z) / (vR.x - vL.x);
             double curZ = vL.z;
             for (int x = vL.x.intValue(); x <= vR.x.intValue(); x++) {
-                drawPixel(x, y, curZ, color.getRed(), color.getGreen(), color.getBlue(), false);
+                drawPixel(x, y, curZ,false);
                 curZ += deltaZ;
             }
         }
@@ -198,6 +192,7 @@ public class TCSS458Paint extends JPanel implements KeyListener {
 
     void createImage() {
         ctm = null;
+        color = Color.WHITE;
         Scanner input = getFile();
         while (input.hasNext()) {
             String command = input.next();
@@ -205,18 +200,21 @@ public class TCSS458Paint extends JPanel implements KeyListener {
                 width = input.nextInt();
                 height = input.nextInt();
                 imageSize = width * height;
-                pixels = new int[imageSize * 3];
 
-                if (depthBuffer == null || depthBuffer.width() != width || depthBuffer.height() != height) {
-                    depthBuffer = new DepthBuffer(width, height);
+                if (frameBuffer == null) {
+                    frameBuffer = new FrameBuffer(width, height);
+                } else if (frameBuffer.width() != width || frameBuffer.height() != height) {
+                    frameBuffer.resize(width, height);
                 } else {
-                    depthBuffer.clear();
+                    frameBuffer.clear();
                 }
 
-                for (int x = 0; x < width; x++) {
-                    for (int y = 0; y < height; y++) {
-                        drawPixel(x, y, Double.NEGATIVE_INFINITY, 255, 255, 255, true);
-                    }
+                if (depthBuffer == null) {
+                    depthBuffer = new DepthBuffer(width, height);
+                } else if (depthBuffer.width() != width || depthBuffer.height() != height) {
+                    depthBuffer.resize(width, height);
+                } else {
+                    depthBuffer.clear();
                 }
             } else if (command.equals("LINE")) {
                 initCurrentTransformationMatrix();
@@ -316,7 +314,7 @@ public class TCSS458Paint extends JPanel implements KeyListener {
         createImage();
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         WritableRaster raster = image.getRaster();
-        raster.setPixels(0, 0, width, height, pixels);
+        frameBuffer.draw(raster, 0, 0);
         g.drawImage(image, 0, 0, null);
     }
 
