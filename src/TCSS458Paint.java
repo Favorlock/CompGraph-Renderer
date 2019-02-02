@@ -10,8 +10,8 @@ import java.util.*;
 
 public class TCSS458Paint extends JPanel implements KeyListener {
 
-    public static final double UNICUBE_POS = .5;
-    public static final double UNICUBE_NEG = -.5;
+    public static final double UNICUBE_POS = Cube.UNICUBE_POS;
+    public static final double UNICUBE_NEG = Cube.UNICUBE_NEG;
     public static final int DEGREES_TO_ROTATE = 3;
 
     public static int width;
@@ -298,26 +298,11 @@ public class TCSS458Paint extends JPanel implements KeyListener {
                 initCurrentTransformationMatrix();
                 Matrix4 ctm = applySceneRotations();
 
-                Vector4 lbf = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_NEG, UNICUBE_POS));
-                Vector4 lbr = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_NEG, UNICUBE_NEG));
-                Vector4 rbr = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_NEG, UNICUBE_NEG));
-                Vector4 rbf = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_NEG, UNICUBE_POS));
-                Vector4 ltf = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_POS, UNICUBE_POS));
-                Vector4 ltr = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_POS, UNICUBE_NEG));
-                Vector4 rtr = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_POS, UNICUBE_NEG));
-                Vector4 rtf = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_POS, UNICUBE_POS));
-
-                Mesh mesh = new Mesh(
-                        new Surface(new Triangle(lbf, lbr, ltr), new Triangle(lbf, ltf, ltr)), // left
-                        new Surface(new Triangle(rbf, rbr, rtr), new Triangle(rbf, rtf, rtr)), // right
-                        new Surface(new Triangle(lbr, rbr, rtr), new Triangle(lbr, ltr, rtr)), // rear
-                        new Surface(new Triangle(lbf, rbf, rtf), new Triangle(lbf, ltf, rtf)), // front
-                        new Surface(new Triangle(lbf, lbr, rbr), new Triangle(lbf, rbf, rbr)), // bottom
-                        new Surface(new Triangle(ltf, ltr, rtr), new Triangle(ltf, rtf, rtr))  // top
-                );
+                Cube cube = new Cube();
+                cube.transform(ctm);
 
                 scan = new Vector4[height][2];
-                drawMesh(mesh);
+                drawMesh(cube);
                 scan = null;
             }
         }
