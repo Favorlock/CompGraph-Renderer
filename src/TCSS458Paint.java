@@ -19,12 +19,14 @@ public class TCSS458Paint extends JPanel implements KeyListener {
 
     private int imageSize;
     private FrameBuffer frameBuffer;
-    private Vector4[][] scan;
+    private int[][] scan;
+    private double[][] scanZ;
     private DepthBuffer depthBuffer;
     private Color color;
     private Matrix4 ctm;
     private int xRotate = 0;
     private int yRotate = 0;
+    private boolean drawTri = false;
 
     void drawPixel(int x, int y, double z, boolean force) {
         if (x >= width || y >= height || x < 0 || y < 0)
@@ -36,14 +38,19 @@ public class TCSS458Paint extends JPanel implements KeyListener {
     }
 
     void drawLine(Vector4 v1, Vector4 v2) {
-        if (Math.abs(v2.getY() - v1.getY()) < Math.abs(v2.getX() - v1.getX())) {
-            if (v1.getX() > v2.getX()) {
+        int x1 = worldToScreen(v1.x, width);
+        int y1 = worldToScreen(v1.y, height);
+        int x2 = worldToScreen(v2.x, width);
+        int y2 = worldToScreen(v2.y, height);
+
+        if (Math.abs(y2 - y1) < Math.abs(x2 - x1)) {
+            if (x1 > x2) {
                 drawLineLow(v2, v1);
             } else {
                 drawLineLow(v1, v2);
             }
         } else {
-            if (v1.getY() > v2.getY()) {
+            if (y1 > y2) {
                 drawLineHigh(v2, v1);
             } else {
                 drawLineHigh(v1, v2);
@@ -52,96 +59,70 @@ public class TCSS458Paint extends JPanel implements KeyListener {
     }
 
     void drawLineLow(Vector4 v1, Vector4 v2) {
-        int x1 = worldToScreen(v1.getX(), width);
-        int y1 = worldToScreen(v1.getY(), height);
-        int x2 = worldToScreen(v2.getX(), width);
-        int y2 = worldToScreen(v2.getY(), height);
+        int x1 = worldToScreen(v1.x, width);
+        int y1 = worldToScreen(v1.y, height);
+        int x2 = worldToScreen(v2.x, width);
+        int y2 = worldToScreen(v2.y, height);
 
-        int deltaX = x2 - x1;
-        int deltaY = y2 - y1;
-        double deltaZ = (v2.getZ() - v1.getZ()) / deltaX;
-        int multY = 1;
+        double m = (y2 - y1) * 1.0 / (x2 - x1);
+        double mz = (v2.z - v1.z) / (x2 - x1);
+        double z = v1.z;
+        double yfl = y1;
+        int y;
 
-        if (deltaY < 0) {
-            multY = -1;
-            deltaY = -deltaY;
-        }
+        for (int x = x1; x <= x2; x++, z += mz, yfl += m) {
+            y = (int) Math.round(yfl);
+            drawPixel(x, y, z, false);
 
-        int weight = 2 * deltaY - deltaX;
-        int y = y1;
-
-        double curZ = v1.getZ();
-        for (int x = x1; x <= x2; x++) {
-            if (!(x < 0 || x >= width || y < 0 || y >= height)) {
-                if (scan != null) {
-                    Vector4[] row = scan[y];
-                    if (row[0] == null) {
-                        row[0] = new Vector4(x, y, curZ);
-                        row[1] = new Vector4(x, y, curZ);
-                    } else {
-                        if (x < row[0].getX())
-                            row[0] = new Vector4(x, y, curZ);
-                        else if (x > row[1].getX())
-                            row[1] = new Vector4(x, y, curZ);
-                    }
+            if (scan != null) {
+                if (scan[y][0] == Integer.MIN_VALUE) {
+                    scan[y][0] = scan[y][1] = x;
+                    scanZ[y][0] = scanZ[y][1] = z;
                 } else {
-                    drawPixel(x, y, curZ, false);
+                    if (x < scan[y][0]) {
+                        scan[y][0] = x;
+                        scanZ[y][0] = z;
+                    }
+                    if (x > scan[y][1]) {
+                        scan[y][1] = x;
+                        scanZ[y][1] = z;
+                    }
                 }
             }
-
-            if (weight > 0) {
-                y = y + multY;
-                weight = weight - 2 * deltaX;
-            }
-            weight = weight + 2 * deltaY;
-            curZ += deltaZ;
         }
     }
 
     void drawLineHigh(Vector4 v1, Vector4 v2) {
-        int x1 = worldToScreen(v1.getX(), width);
-        int y1 = worldToScreen(v1.getY(), height);
-        int x2 = worldToScreen(v2.getX(), width);
-        int y2 = worldToScreen(v2.getY(), height);
+        int x1 = worldToScreen(v1.x, width);
+        int y1 = worldToScreen(v1.y, height);
+        int x2 = worldToScreen(v2.x, width);
+        int y2 = worldToScreen(v2.y, height);
 
-        int deltaX = x2 - x1;
-        int deltaY = y2 - y1;
-        double deltaZ = (v2.getZ() - v1.getZ()) / deltaY;
-        int multX = 1;
+        double m = (x2 - x1) * 1.0 / (y2 - y1);
+        double mz = (v2.z - v1.z) / (y2 - y1);
+        double z = v1.z;
+        double xfl = x1;
+        int x;
 
-        if (deltaX < 0) {
-            multX = -1;
-            deltaX = -deltaX;
-        }
+        for (int y = y1; y <= y2; y++, z += mz, xfl += m) {
+            x = (int) Math.round(xfl);
+            drawPixel(x, y, z, false);
 
-        int weight = 2 * deltaX - deltaY;
-        int x = x1;
-
-        double curZ = v1.getZ();
-        for (int y = y1; y <= y2; y++) {
-            if (!(x < 0 || x >= width || y < 0 || y >= height)) {
-                if (scan != null) {
-                    Vector4[] row = scan[y];
-                    if (row[0] == null) {
-                        row[0] = new Vector4(x, y, curZ);
-                        row[1] = new Vector4(x, y, curZ);
-                    } else {
-                        if (x < row[0].getX())
-                            row[0] = new Vector4(x, y, curZ);
-                        else if (x > row[1].getX())
-                            row[1] = new Vector4(x, y, curZ);
-                    }
+            if (drawTri) {
+                if (scan[y][0] == Integer.MIN_VALUE) {
+                    scan[y][0] = scan[y][1] = x;
+                    scanZ[y][0] = scanZ[y][1] = z;
                 } else {
-                    drawPixel(x, y, curZ, false);
+                    if (x < scan[y][0]) {
+                        scan[y][0] = x;
+                        scanZ[y][0] = z;
+                    }
+                    if (x > scan[y][1]) {
+                        scan[y][1] = x;
+                        scanZ[y][1] = z;
+                    }
                 }
             }
-
-            if (weight > 0) {
-                x = x + multX;
-                weight = weight - 2 * deltaY;
-            }
-            weight = weight + 2 * deltaX;
-            curZ += deltaZ;
         }
     }
 
@@ -150,36 +131,28 @@ public class TCSS458Paint extends JPanel implements KeyListener {
         Vector4 v2 = tri.getV2();
         Vector4 v3 = tri.getV3();
 
+        for (int i = 0; i < height; i++) {
+            scan[i][0] = scan[i][1] = Integer.MIN_VALUE;
+        }
+
+        this.drawTri = true;
         drawLine(v1, v2);
         drawLine(v2, v3);
         drawLine(v3, v1);
 
-        int y1 = worldToScreen(v1.getY(), height);
-        int y2 = worldToScreen(v2.getY(), height);
-        int y3 = worldToScreen(v3.getY(), height);
-
-        int yMin = Math.max(0, Math.min(y1, Math.min(y2, y3)));
-        int yMax = Math.min(height - 1, Math.max(y1, Math.max(y2, y3)));
-
-        for (int y = yMin; y <= yMax; y++) {
-            if (y < 0 || y >= height)
-                continue;
-
-            Vector4[] row = scan[y];
-
-            if (row[0] == null || row[1] == null)
-                continue;
-
-            Vector4 vL = row[0];
-            Vector4 vR = row[1];
-
-            double deltaZ = (vR.z - vL.z) / (vR.x - vL.x);
-            double curZ = vL.z;
-            for (int x = vL.x.intValue(); x <= vR.x.intValue(); x++) {
-                drawPixel(x, y, curZ,false);
-                curZ += deltaZ;
+        for (int y = 0; y < height; y++) {
+            if (scan[y][0] == Integer.MIN_VALUE) continue;
+            if (scan[y][0] == scan[y][1]) {
+                drawPixel(scan[y][0], y, scanZ[y][0], false);
+            } else {
+                double m = (scanZ[y][1] - scanZ[y][0]) / (scan[y][1] - scan[y][0]);
+                double z = (scanZ[y][0]);
+                for (int x = scan[y][0]; x <= scan[y][1]; x++, z += m) {
+                    drawPixel(x, y, z, false);
+                }
             }
         }
+        this.drawTri = false;
     }
 
     void drawSurface(Surface surface) {
@@ -201,6 +174,9 @@ public class TCSS458Paint extends JPanel implements KeyListener {
                 height = input.nextInt();
                 imageSize = width * height;
 
+                scan = new int[height][2];
+                scanZ = new double[height][2];
+
                 if (frameBuffer == null) {
                     frameBuffer = new FrameBuffer(width, height);
                 } else if (frameBuffer.width() != width || frameBuffer.height() != height) {
@@ -218,15 +194,15 @@ public class TCSS458Paint extends JPanel implements KeyListener {
                 }
             } else if (command.equals("LINE")) {
                 initCurrentTransformationMatrix();
-                Matrix4 ctm = applySceneRotations();
-                Vector4 p1 = ctm.mult(new Vector4(input.nextDouble(), input.nextDouble(), input.nextDouble()));
-                Vector4 p2 = ctm.mult(new Vector4(input.nextDouble(), input.nextDouble(), input.nextDouble()));
+                Matrix4 scene = getSceneTransformation();
+                Vector4 p1 = scene.mult(this.ctm.mult(new Vector4(input.nextDouble(), input.nextDouble(), input.nextDouble())));
+                Vector4 p2 = scene.mult(this.ctm.mult(new Vector4(input.nextDouble(), input.nextDouble(), input.nextDouble())));
                 drawLine(p1, p2);
             } else if (command.equals("RGB")) {
                 color = Color.rgb(input.nextDouble(), input.nextDouble(), input.nextDouble());
             } else if (command.equals("TRI")) {
                 initCurrentTransformationMatrix();
-                scan = new Vector4[height][2];
+                scan = new int[height][2];
 
                 Triangle tri = new Triangle(
                         new Vector4(input.nextDouble(), input.nextDouble(), input.nextDouble()),
@@ -234,8 +210,9 @@ public class TCSS458Paint extends JPanel implements KeyListener {
                         new Vector4(input.nextDouble(), input.nextDouble(), input.nextDouble())
                 );
 
-                Matrix4 ctm = applySceneRotations();
+                Matrix4 scene = getSceneTransformation();
                 tri.transform(ctm);
+                tri.transform(scene);
                 drawTriangle(tri);
                 scan = null;
             } else if (command.equals("LOAD_IDENTITY_MATRIX")) {
@@ -271,16 +248,16 @@ public class TCSS458Paint extends JPanel implements KeyListener {
                 ctm = matrix.mult(ctm);
             } else if (command.equals("WIREFRAME_CUBE")) {
                 initCurrentTransformationMatrix();
-                Matrix4 ctm = applySceneRotations();
+                Matrix4 scene = getSceneTransformation();
 
-                Vector4 lbf = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_NEG, UNICUBE_POS));
-                Vector4 lbr = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_NEG, UNICUBE_NEG));
-                Vector4 rbr = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_NEG, UNICUBE_NEG));
-                Vector4 rbf = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_NEG, UNICUBE_POS));
-                Vector4 ltf = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_POS, UNICUBE_POS));
-                Vector4 ltr = ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_POS, UNICUBE_NEG));
-                Vector4 rtr = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_POS, UNICUBE_NEG));
-                Vector4 rtf = ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_POS, UNICUBE_POS));
+                Vector4 lbf = scene.mult(this.ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_NEG, UNICUBE_POS)));
+                Vector4 lbr = scene.mult(this.ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_NEG, UNICUBE_NEG)));
+                Vector4 rbr = scene.mult(this.ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_NEG, UNICUBE_NEG)));
+                Vector4 rbf = scene.mult(this.ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_NEG, UNICUBE_POS)));
+                Vector4 ltf = scene.mult(this.ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_POS, UNICUBE_POS)));
+                Vector4 ltr = scene.mult(this.ctm.mult(new Vector4(UNICUBE_NEG, UNICUBE_POS, UNICUBE_NEG)));
+                Vector4 rtr = scene.mult(this.ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_POS, UNICUBE_NEG)));
+                Vector4 rtf = scene.mult(this.ctm.mult(new Vector4(UNICUBE_POS, UNICUBE_POS, UNICUBE_POS)));
 
                 drawLine(lbf, lbr);
                 drawLine(lbr, rbr);
@@ -298,14 +275,12 @@ public class TCSS458Paint extends JPanel implements KeyListener {
                 drawLine(rtf, ltf);
             } else if (command.equals("SOLID_CUBE")) {
                 initCurrentTransformationMatrix();
-                Matrix4 ctm = applySceneRotations();
-
+                Matrix4 scene = getSceneTransformation();
                 Cube cube = new Cube();
-                cube.transform(ctm);
+                cube.transform(this.ctm);
+                cube.transform(scene);
 
-                scan = new Vector4[height][2];
                 drawMesh(cube);
-                scan = null;
             }
         }
     }
@@ -376,8 +351,8 @@ public class TCSS458Paint extends JPanel implements KeyListener {
         }
     }
 
-    static Integer worldToScreen(double pos, int bound) {
-        return Double.valueOf((bound - 1) * (pos + 1) / 2).intValue();
+    static int worldToScreen(double pos, int bound) {
+        return (int) Math.round(((pos + 1) * (bound - 1)) / 2.0);
     }
 
     @Override
@@ -417,8 +392,8 @@ public class TCSS458Paint extends JPanel implements KeyListener {
         return current;
     }
 
-    private Matrix4 applySceneRotations() {
-        Matrix4 matrix = ctm;
+    private Matrix4 getSceneTransformation() {
+        Matrix4 matrix = Matrix4.createIdentityMatrix();
         if (yRotate != 0)
             matrix = Matrix4.createYRotationMatrix(yRotate).mult(matrix);
         if (xRotate != 0)
