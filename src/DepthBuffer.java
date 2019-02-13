@@ -19,7 +19,7 @@ public class DepthBuffer {
     public void clear() {
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
-                buffer[x][y] = Double.NEGATIVE_INFINITY;
+                buffer[x][y] = Double.POSITIVE_INFINITY;
             }
         }
     }
@@ -30,7 +30,7 @@ public class DepthBuffer {
 
     public boolean set(int x, int y, double depth) {
         double depthInBuffer = at(x, y );
-        if (depth > depthInBuffer) {
+        if (depth < depthInBuffer) {
             buffer[x][y] = depth;
             return true;
         }

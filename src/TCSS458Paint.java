@@ -24,6 +24,8 @@ public class TCSS458Paint extends JPanel implements KeyListener {
     private DepthBuffer depthBuffer;
     private Color color;
     private Matrix4 ctm;
+    private Matrix4 lookAtMatrix;
+    private Matrix4 projectionMatrix;
     private int xRotate = 0;
     private int yRotate = 0;
     private boolean drawTri = false;
@@ -72,7 +74,8 @@ public class TCSS458Paint extends JPanel implements KeyListener {
 
         for (int x = x1; x <= x2; x++, z += mz, yfl += m) {
             y = (int) Math.round(yfl);
-            drawPixel(x, y, z, false);
+            if (y < 0 || y >= scan.length) continue;
+//            drawPixel(x, y, z, false);
 
             if (scan != null) {
                 if (scan[y][0] == Integer.MIN_VALUE) {
@@ -106,7 +109,8 @@ public class TCSS458Paint extends JPanel implements KeyListener {
 
         for (int y = y1; y <= y2; y++, z += mz, xfl += m) {
             x = (int) Math.round(xfl);
-            drawPixel(x, y, z, false);
+            if (y < 0 || y >= scan.length) continue;
+//            drawPixel(x, y, z, false);
 
             if (drawTri) {
                 if (scan[y][0] == Integer.MIN_VALUE) {
@@ -127,6 +131,16 @@ public class TCSS458Paint extends JPanel implements KeyListener {
     }
 
     void drawTriangle(Triangle tri) {
+        System.out.println("The geometry");
+        System.out.println(tri.toString());
+        tri.transform(lookAtMatrix);
+        System.out.println("After lookat");
+        System.out.println(tri.toString());
+        tri.transform(projectionMatrix);
+        System.out.println("After frustum");
+        System.out.println(tri.toString());
+        tri.divideByW();
+
         Vector4 v1 = tri.getV1();
         Vector4 v2 = tri.getV2();
         Vector4 v3 = tri.getV3();
@@ -170,8 +184,8 @@ public class TCSS458Paint extends JPanel implements KeyListener {
         while (input.hasNext()) {
             String command = input.next();
             if (command.equals("DIM")) {
-                width = input.nextInt();
-                height = input.nextInt();
+                width = input.nextInt() * 2;
+                height = input.nextInt() * 2;
                 imageSize = width * height;
 
                 scan = new int[height][2];
@@ -281,8 +295,80 @@ public class TCSS458Paint extends JPanel implements KeyListener {
                 cube.transform(scene);
 
                 drawMesh(cube);
+            } else if (command.equals("LIGHT_DIRECTION")) {
+                Vector4 vector = new Vector4(input.nextDouble(), input.nextDouble(), input.nextDouble(), 0.0);
+            } else if (command.equals("LOOKAT")) {
+                double ex = input.nextDouble();
+                double ey = input.nextDouble();
+                double ez = input.nextDouble();
+                double cx = input.nextDouble();
+                double cy = input.nextDouble();
+                double cz = input.nextDouble();
+                double ux = input.nextDouble();
+                double uy = input.nextDouble();
+                double uz = input.nextDouble();
+                lookAtMatrix = createLookAtMatrix(ex, ey, ez, cx, cy, cz, ux, uy, uz);
+            } else if (command.equals("ORTHO") || command.equals("FRUSTUM")) {
+                ProjectionType type = ProjectionType.valueOf(command);
+                double left = input.nextDouble();
+                double right = input.nextDouble();
+                double top = input.nextDouble();
+                double bottom = input.nextDouble();
+                double near = input.nextDouble();
+                double far = input.nextDouble();
+
+                if (type == ProjectionType.ORTHO) {
+                    projectionMatrix = createOrthoProjectionMatrix(left, right, top, bottom, near, far);
+                } else {
+                    projectionMatrix = createFrustumProjectionMatrix(left, right, top, bottom, near, far);
+                }
             }
         }
+    }
+
+    private Matrix4 createOrthoProjectionMatrix(double left, double right, double top, double bottom, double near, double far) {
+        Matrix4 matrix = new Matrix4(new double[]{
+                2.0 / (right - left), 0, 0, -(right + left) / (right - left),
+                0, 2.0 / (top - bottom), 0, -(top + bottom) / (top - bottom),
+                0, 0, -2.0 / (far - near), -(far + near) / (far - near),
+                0, 0, 0, 1
+        });
+
+        return matrix;
+    }
+
+    private Matrix4 createFrustumProjectionMatrix(double left, double right, double top, double bottom, double near, double far) {
+        Matrix4 matrix = new Matrix4(new double[]{
+                2.0 * near / (right - left), 0, 0, -near * (right + left) / (right - left),
+                0, 2.0 * near / (top - bottom), 0, -near * (top + bottom) / (top - bottom),
+                0, 0, -(far + near) / (far - near), 2.0 * far * near / (near - far),
+                0, 0, -1, 0
+        });
+
+        return matrix;
+    }
+
+    private Matrix4 createLookAtMatrix(double ex, double ey, double ez, double cx, double cy, double cz, double ux, double uy, double uz) {
+        Vector4 eye = new Vector4(ex, ey, ez, 0);
+        Vector4 center = new Vector4(cx, cy, cz, 0);
+        Vector4 up = new Vector4(ux, uy, uz, 0);
+
+        Vector4 n = eye.subtract(center).normalize();
+        Vector4 u = up.crossProduct(n).normalize();
+        Vector4 v = n.crossProduct(u).normalize();
+
+        double tx = u.dotProduct(eye);
+        double ty = v.dotProduct(eye);
+        double tz = n.dotProduct(eye);
+
+        Matrix4 matrix = new Matrix4(new double[]{
+                u.x, u.y, u.z, -tx,
+                v.x, v.y, v.z, -ty,
+                n.x, n.y, n.z, -tz,
+                0, 0, 0, 1
+        });
+
+        return matrix;
     }
 
     public void paintComponent(Graphics g) {

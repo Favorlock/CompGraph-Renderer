@@ -27,4 +27,19 @@ public class Triangle {
         this.v2 = ctm.mult(this.v2);
         this.v3 = ctm.mult(this.v3);
     }
+
+    public void divideByW() {
+        this.v1 = v1.divideByW();
+        this.v2 = v2.divideByW();
+        this.v3 = v3.divideByW();
+    }
+
+    @Override
+    public String toString() {
+        return "Triangle{" +
+                "\n\tv1=" + v1 +
+                ", \n\tv2=" + v2 +
+                ", \n\tv3=" + v3 +
+                '}';
+    }
 }

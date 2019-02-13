@@ -17,7 +17,7 @@ public class Matrix4 {
 
     private double[] data;
 
-    private Matrix4(double[] data) {
+    public Matrix4(double[] data) {
         this.data = data;
     }
 
