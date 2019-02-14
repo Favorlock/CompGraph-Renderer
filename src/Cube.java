@@ -14,12 +14,12 @@ public class Cube extends Mesh {
 
     public Cube() {
         super(
-                new Surface(new Triangle(lbf, lbr, ltr), new Triangle(lbf, ltf, ltr)), // left
-                new Surface(new Triangle(rbf, rbr, rtr), new Triangle(rbf, rtf, rtr)), // right
-                new Surface(new Triangle(lbr, rbr, rtr), new Triangle(lbr, ltr, rtr)), // rear
-                new Surface(new Triangle(lbf, rbf, rtf), new Triangle(lbf, ltf, rtf)), // front
-                new Surface(new Triangle(lbf, lbr, rbr), new Triangle(lbf, rbf, rbr)), // bottom
-                new Surface(new Triangle(ltf, ltr, rtr), new Triangle(ltf, rtf, rtr))  // top
+                new Surface(new Triangle(lbf, lbr, ltr), new Triangle(lbf, ltr, ltf)), // left
+                new Surface(new Triangle(rbf, rbr, rtr), new Triangle(rbf, rtr, rtf)), // right
+                new Surface(new Triangle(lbr, rtr, rbr), new Triangle(lbr, ltr, rtr)), // rear
+                new Surface(new Triangle(lbf, rbf, rtf), new Triangle(lbf, rtf, ltf)), // front
+                new Surface(new Triangle(lbf, rbr, lbr), new Triangle(lbf, rbf, rbr)), // bottom
+                new Surface(new Triangle(ltf, rtr, ltr), new Triangle(ltf, rtf, rtr))  // top
         );
     }
 

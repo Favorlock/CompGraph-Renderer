@@ -34,16 +34,18 @@ public class FrameBuffer {
         return Color.rgb(buffer[ri], buffer[gi], buffer[bi]);
     }
 
-    public boolean set(int x, int y, Color color) {
+    public void set(int x, int y, Color color) {
+        set(x, y, color.get(0), color.get(1), color.get(2));
+    }
+
+    public void set(int x, int y, int r, int g, int b) {
         int ri = (height - y - 1) * width * 3 + x * 3;
         int gi = ri + 1;
         int bi = ri + 2;
 
-        buffer[ri] = color.get(0);
-        buffer[gi] = color.get(1);
-        buffer[bi] = color.get(2);
-
-        return false;
+        buffer[ri] = r;
+        buffer[gi] = g;
+        buffer[bi] = b;
     }
 
     public void resize(int width, int height) {

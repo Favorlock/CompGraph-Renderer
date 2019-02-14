@@ -26,16 +26,21 @@ public class TCSS458Paint extends JPanel implements KeyListener {
     private Matrix4 ctm;
     private Matrix4 lookAtMatrix;
     private Matrix4 projectionMatrix;
+    private Vector4 lightDirection;
     private int xRotate = 0;
     private int yRotate = 0;
     private boolean drawTri = false;
 
     void drawPixel(int x, int y, double z, boolean force) {
+        drawPixel(x, y, z, color.get(0), color.get(1), color.get(2), force);
+    }
+
+    void drawPixel(int x, int y, double z, int r, int g, int b, boolean force) {
         if (x >= width || y >= height || x < 0 || y < 0)
             return;
 
         if (depthBuffer.set(x, y, z) || force) {
-            frameBuffer.set(x, y, color);
+            frameBuffer.set(x, y, r, g, b);
         }
     }
 
@@ -131,14 +136,20 @@ public class TCSS458Paint extends JPanel implements KeyListener {
     }
 
     void drawTriangle(Triangle tri) {
-        System.out.println("The geometry");
-        System.out.println(tri.toString());
+        Vector4 normal = tri.normal().normalize();
+        double shadeFactor = Math.max(normal.dotProduct(lightDirection), 0);
+        int ar = (int) (0.5 * color.get(0));
+        int ag = (int) (0.5 * color.get(1));
+        int ab = (int) (0.5 * color.get(2));
+        int dr = (int) (0.5 * shadeFactor * color.get(0));
+        int dg = (int) (0.5 * shadeFactor * color.get(1));
+        int db = (int) (0.5 * shadeFactor * color.get(2));
+        int r = ar + dr;
+        int g = ag + dg;
+        int b = ab + db;
+
         tri.transform(lookAtMatrix);
-        System.out.println("After lookat");
-        System.out.println(tri.toString());
         tri.transform(projectionMatrix);
-        System.out.println("After frustum");
-        System.out.println(tri.toString());
         tri.divideByW();
 
         Vector4 v1 = tri.getV1();
@@ -157,12 +168,12 @@ public class TCSS458Paint extends JPanel implements KeyListener {
         for (int y = 0; y < height; y++) {
             if (scan[y][0] == Integer.MIN_VALUE) continue;
             if (scan[y][0] == scan[y][1]) {
-                drawPixel(scan[y][0], y, scanZ[y][0], false);
+                drawPixel(scan[y][0], y, scanZ[y][0], r, g, b, false);
             } else {
                 double m = (scanZ[y][1] - scanZ[y][0]) / (scan[y][1] - scan[y][0]);
                 double z = (scanZ[y][0]);
                 for (int x = scan[y][0]; x <= scan[y][1]; x++, z += m) {
-                    drawPixel(x, y, z, false);
+                    drawPixel(x, y, z, r, g, b,false);
                 }
             }
         }
@@ -296,7 +307,7 @@ public class TCSS458Paint extends JPanel implements KeyListener {
 
                 drawMesh(cube);
             } else if (command.equals("LIGHT_DIRECTION")) {
-                Vector4 vector = new Vector4(input.nextDouble(), input.nextDouble(), input.nextDouble(), 0.0);
+                lightDirection = new Vector4(input.nextDouble(), input.nextDouble(), input.nextDouble(), 0.0).normalize();
             } else if (command.equals("LOOKAT")) {
                 double ex = input.nextDouble();
                 double ey = input.nextDouble();

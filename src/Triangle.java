@@ -34,6 +34,12 @@ public class Triangle {
         this.v3 = v3.divideByW();
     }
 
+    public Vector4 normal() {
+        Vector4 u = v2.subtract(v1);
+        Vector4 v = v3.subtract(v1);
+        return u.crossProduct(v);
+    }
+
     @Override
     public String toString() {
         return "Triangle{" +
